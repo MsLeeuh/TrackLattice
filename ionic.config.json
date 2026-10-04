@@ -1,0 +1,7 @@
+{
+  "name": "EquipmentTracker",
+  "integrations": {
+    "cordova": {}
+  },
+  "type": "angular"
+}

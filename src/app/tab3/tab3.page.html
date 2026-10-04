@@ -1,0 +1,188 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>Admin Configuration</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="saveConfiguration()" color="light">
+        <ion-icon name="save-outline" slot="start"></ion-icon>
+        Save
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar>
+    <ion-segment [value]="activeSegment" (ionChange)="activeSegment = $event.detail.value || 'attributes'" color="primary">
+      <ion-segment-button value="attributes">
+        <ion-label>Attributes</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="departments">
+        <ion-label>Departments</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="locations">
+        <ion-label>Locations</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [scrollY]="true" class="ion-padding" style="--padding-bottom: 80px;">
+  <div style="padding-bottom: 90px; -webkit-overflow-scrolling: touch;">
+
+    <!-- SECTION 1: ATTRIBUTES -->
+    <ng-container *ngIf="activeSegment === 'attributes'">
+
+      <!-- Category Selector -->
+      <div class="app-card">
+        <h3 class="app-section-header">Select Equipment Category</h3>
+        <p style="font-size: 12px; color: var(--app-text-secondary); margin: -4px 0 10px 0;">
+          Choose an equipment type to view or modify its assigned dynamic attribute fields.
+        </p>
+
+        <div style="display: flex; gap: 8px;">
+          <select class="app-select" [(ngModel)]="selectedCategoryName" (change)="onCategorySelect()">
+            <option value="">-- Select Category --</option>
+            <option *ngFor="let cat of config.equipmentTypes" [value]="cat.name">{{ cat.name }}</option>
+          </select>
+          <ion-button color="primary" (click)="promptAddCategory()">
+            <ion-icon name="add-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+          <ion-button color="danger" fill="outline" (click)="deleteCategory(selectedCategoryName)" *ngIf="selectedCategoryName">
+            <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- Fields for Selected Category -->
+      <div class="app-card" *ngIf="selectedCategoryConfig">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 class="app-section-header" style="margin: 0;">
+            Fields for {{ selectedCategoryConfig.name }} ({{ selectedCategoryConfig.attributes?.length || 0 }})
+          </h3>
+          <ion-button size="small" color="primary" (click)="promptAddAttributeToCategory()">+ Add Field</ion-button>
+        </div>
+
+        <div *ngIf="!selectedCategoryConfig.attributes || selectedCategoryConfig.attributes.length === 0" class="ion-text-center ion-padding" style="color: var(--app-text-secondary);">
+          No custom attributes mapped to this equipment type yet.
+        </div>
+
+        <div *ngFor="let attr of selectedCategoryConfig.attributes; let i = index" style="border-bottom: 1px solid var(--app-card-border); padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong style="font-size: 14px;">{{ attr.label }}</strong>
+            <div style="font-size: 12px; color: var(--app-text-secondary); margin-top: 2px;">
+              Key: <span class="app-mono">{{ attr.key }}</span> | Type: <strong>{{ attr.type }}</strong>
+              <span *ngIf="attr.required" style="color: var(--app-danger); font-weight: bold; margin-left: 6px;">[Required]</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <ion-button color="primary" fill="clear" size="small" (click)="editCategoryAttribute(i)">
+              <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button color="danger" fill="clear" size="small" (click)="removeAttributeFromCategory(i)">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Master Pool -->
+      <div class="app-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 class="app-section-header" style="margin: 0;">Master Custom Attributes Pool</h3>
+          <ion-button size="small" color="secondary" (click)="promptCreateMasterAttribute()">+ New Field Def</ion-button>
+        </div>
+
+        <div *ngFor="let def of config.customAttributes" style="border-bottom: 1px solid var(--app-card-border); padding: 8px 0; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong style="font-size: 14px;">{{ def.label }}</strong>
+            <span class="app-mono" style="font-size: 11px; margin-left: 8px; color: var(--app-accent-blue-label);">({{ def.key }})</span>
+            <div style="font-size: 12px; color: var(--app-text-secondary);">Input Type: {{ def.type }}</div>
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <ion-button color="primary" fill="clear" size="small" (click)="editMasterAttribute(def.key)">
+              <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button color="danger" fill="clear" size="small" (click)="deleteMasterAttribute(def.key)">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <!-- SECTION 2: DEPARTMENTS -->
+    <ng-container *ngIf="activeSegment === 'departments'">
+
+      <div class="app-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 class="app-section-header" style="margin: 0;">Department Directory & Prefix Codes</h3>
+          <ion-button size="small" color="primary" (click)="addDepartmentRow()">+ Add Department</ion-button>
+        </div>
+
+        <p style="font-size: 12px; color: var(--app-text-secondary); margin: -4px 0 12px 0;">
+          Department codes are used in auto-generating laptop/workstation hostnames (e.g. SCIT, SHRF, PROB).
+        </p>
+
+        <div *ngFor="let dept of config.departments; let i = index" style="border-bottom: 1px solid var(--app-card-border); padding: 10px 0; display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; align-items: center;">
+          <div>
+            <label class="app-label">Department Name</label>
+            <input class="app-input" [(ngModel)]="dept.name" placeholder="e.g. Sheriff's Office" />
+          </div>
+          <div>
+            <label class="app-label">Prefix Code</label>
+            <input class="app-input app-mono" [(ngModel)]="dept.code" placeholder="e.g. SHRF" style="text-transform: uppercase;" />
+          </div>
+          <div style="padding-top: 18px;">
+            <ion-button color="danger" fill="clear" size="small" (click)="removeDepartmentRow(i)">
+              <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+            </ion-button>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <!-- SECTION 3: LOCATIONS -->
+    <ng-container *ngIf="activeSegment === 'locations'">
+
+      <div class="app-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 class="app-section-header" style="margin: 0;">Jurisdiction & Building Trees</h3>
+          <ion-button size="small" color="primary" (click)="promptAddJurisdiction()">+ Add Jurisdiction</ion-button>
+        </div>
+
+        <div *ngFor="let j of config.jurisdictions; let jIndex = index" style="margin-bottom: 16px; border: 1px solid var(--app-card-border); border-radius: 6px; padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 16px; color: var(--app-accent-blue-label);">{{ j.name }}</strong>
+            <div style="display: flex; gap: 4px;">
+              <ion-button size="small" color="primary" fill="outline" (click)="renameJurisdiction(jIndex)">
+                <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button size="small" color="primary" fill="outline" (click)="promptAddBuilding(jIndex)">+ Building</ion-button>
+              <ion-button size="small" color="danger" fill="clear" (click)="removeJurisdiction(jIndex)">
+                <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+
+          <div *ngIf="!j.buildings || j.buildings.length === 0" style="font-size: 12px; color: var(--app-text-secondary); font-style: italic;">
+            No buildings added to this jurisdiction yet.
+          </div>
+
+          <div *ngFor="let b of j.buildings; let bIndex = index" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-top: 1px dashed var(--app-card-border);">
+            <span style="font-size: 13px;">🏢 {{ b }}</span>
+            <div style="display: flex; gap: 2px;">
+              <ion-button color="primary" fill="clear" size="small" (click)="renameBuilding(jIndex, bIndex)">
+                <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" fill="clear" size="small" (click)="removeBuilding(jIndex, bIndex)">
+                <ion-icon name="close-circle-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+
+  </div>
+</ion-content>

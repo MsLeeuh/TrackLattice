@@ -1,0 +1,232 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>Hardware Inventory</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="startScan()">
+        <ion-icon slot="icon-only" name="barcode-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="goToNewAsset()">
+        <ion-icon slot="icon-only" name="add-circle-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <!-- Search & Filter Bar -->
+  <ion-toolbar>
+    <ion-searchbar
+      [value]="searchTerm"
+      (ionInput)="onSearchChange($event)"
+      placeholder="Search Tag, S/N, Model, Employee..."
+      animated="true"
+      clear-icon="close-circle">
+    </ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  
+  <!-- Empty Inventory State -->
+  <div *ngIf="filteredAssets.length === 0" class="ion-text-center ion-padding app-card">
+    <ion-icon name="hardware-chip-outline" style="font-size: 48px; color: var(--app-text-secondary);"></ion-icon>
+    <p style="color: var(--app-text-secondary);">No assets found matching your criteria.</p>
+    <ion-button fill="outline" size="small" (click)="goToNewAsset()">Add New Asset</ion-button>
+  </div>
+
+  <!-- Asset Inventory List Cards -->
+  <div *ngFor="let asset of filteredAssets" class="app-card" (click)="openDetail(asset)" style="cursor: pointer;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <h2 style="margin: 0; font-weight: bold;">{{ asset.make }} {{ asset.model }}</h2>
+        <p class="app-mono" style="margin: 2px 0 0 0; font-size: 13px; color: var(--app-accent-blue-label);">
+          Tag #: {{ asset.propTag || 'N/A' }}
+        </p>
+      </div>
+      <ion-chip [color]="getStatusColor(asset.status)" class="ion-no-margin">
+        {{ asset.status }}
+      </ion-chip>
+    </div>
+
+    <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: var(--app-text-secondary);">
+      <div><strong>S/N:</strong> <span class="app-mono">{{ asset.serialNumber || 'N/A' }}</span></div>
+      <div><strong>Type:</strong> {{ asset.equipmentType }}</div>
+      <div><strong>Dept:</strong> {{ asset.department || 'Unassigned' }}</div>
+      <div><strong>Building:</strong> {{ asset.location?.building || 'Unassigned' }}</div>
+    </div>
+  </div>
+
+  <!-- Asset Detail & Edit Modal -->
+  <ion-modal [isOpen]="isDetailOpen" (didDismiss)="closeDetail()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar color="primary">
+          <ion-title>{{ isEditing ? 'Edit Asset' : 'Asset Details' }}</ion-title>
+
+          <ion-buttons slot="start">
+            <ion-button (click)="toggleEditMode()">
+              {{ isEditing ? 'Cancel' : 'Edit' }}
+            </ion-button>
+          </ion-buttons>
+
+          <ion-buttons slot="end">
+            <ion-button (click)="closeDetail()" *ngIf="!isEditing">Close</ion-button>
+            <ion-button (click)="saveAssetEdits()" color="success" *ngIf="isEditing">Save</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content class="ion-padding" *ngIf="selectedAsset">
+
+      <!-- ============================================================
+             VIEW MODE (Readonly Detail View)
+             ============================================================ -->
+        <ng-container *ngIf="!isEditing">
+          
+          <!-- Identity Card -->
+          <div class="app-card">
+            <h3 class="app-section-header">Device Identity</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h1 style="margin: 0; font-size: 20px;">{{ selectedAsset.make }} {{ selectedAsset.model }}</h1>
+                <p class="app-mono" style="margin: 4px 0 0 0; color: var(--app-accent-blue-label);">
+                  Property Tag: {{ selectedAsset.propTag }}
+                </p>
+              </div>
+              <ion-chip [color]="getStatusColor(selectedAsset.status)">{{ selectedAsset.status }}</ion-chip>
+            </div>
+            
+            <div style="margin-top: 12px; font-size: 13px;" *ngIf="selectedAsset.deviceName">
+              <span class="app-label">Device Name / Hostname</span>
+              <div class="app-input app-mono app-input-readonly">{{ selectedAsset.deviceName }}</div>
+            </div>
+          </div>
+
+          <!-- Specs Card -->
+          <div class="app-card">
+            <h3 class="app-section-header">Hardware Specifications</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+              <div><span class="app-label">Serial Number</span><span class="app-mono">{{ selectedAsset.serialNumber }}</span></div>
+              <div><span class="app-label">Equipment Type</span>{{ selectedAsset.equipmentType }}</div>
+              <div *ngIf="selectedAsset.specifications?.cpu"><span class="app-label">CPU</span>{{ selectedAsset.specifications?.cpu }}</div>
+              <div *ngIf="selectedAsset.specifications?.ramGB"><span class="app-label">RAM</span>{{ selectedAsset.specifications?.ramGB }} GB</div>
+              <div *ngIf="selectedAsset.specifications?.storageGB"><span class="app-label">Storage</span>{{ selectedAsset.specifications?.storageGB }} GB {{ selectedAsset.specifications?.storageType }}</div>
+              <div *ngIf="selectedAsset.specifications?.macAddress"><span class="app-label">MAC Address</span><span class="app-mono">{{ selectedAsset.specifications?.macAddress }}</span></div>
+            </div>
+          </div>
+
+          <!-- Assignment & Location Card -->
+          <div class="app-card">
+            <h3 class="app-section-header">Assignment & Location</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+              <div><span class="app-label">Assigned User</span>{{ selectedAsset.assignedEmployee || 'Unassigned' }}</div>
+              <div><span class="app-label">Department</span>{{ selectedAsset.department || 'Unassigned' }}</div>
+              <div><span class="app-label">Jurisdiction</span>{{ selectedAsset.location?.jurisdiction || 'N/A' }}</div>
+              <div><span class="app-label">Building</span>{{ selectedAsset.location?.building || 'N/A' }}</div>
+              <div><span class="app-label">Floor</span>{{ selectedAsset.location?.floor || 'N/A' }}</div>
+              <div><span class="app-label">Room / Closet</span>{{ selectedAsset.location?.roomOrCloset || 'N/A' }}</div>
+            </div>
+          </div>
+
+          <!-- Audit Notes History Card -->
+          <div class="app-card" *ngIf="selectedAsset.notes && selectedAsset.notes.length > 0">
+            <h3 class="app-section-header">Notes & Audit Trail</h3>
+            <div *ngFor="let note of selectedAsset.notes" style="border-bottom: 1px solid var(--app-card-border); padding: 8px 0;">
+              <div style="font-size: 11px; color: var(--app-text-secondary); display: flex; justify-content: space-between;">
+                <span><strong>{{ note.author }}</strong></span>
+                <span>{{ note.timestamp | date:'short' }}</span>
+              </div>
+              <p style="margin: 4px 0 0 0; font-size: 13px;">{{ note.text }}</p>
+            </div>
+          </div>
+
+        </ng-container>
+
+      <!-- ============================================================
+             EDIT MODE (Adaptive Form View)
+             ============================================================ -->
+        <ng-container *ngIf="isEditing">
+
+          <!-- Core Details Form -->
+          <div class="app-card">
+            <h3 class="app-section-header">Edit Identification</h3>
+            
+            <label class="app-label">Property Tag</label>
+            <input class="app-input app-mono" [(ngModel)]="editFormData.propTag" (ngModelChange)="updateEditDeviceName()" />
+
+            <div style="margin-top: 10px;">
+              <label class="app-label">Serial Number</label>
+              <input class="app-input app-mono" [(ngModel)]="editFormData.serialNumber" />
+            </div>
+
+            <div style="margin-top: 10px;">
+              <label class="app-label">Equipment Status</label>
+              <select class="app-select" [(ngModel)]="editFormData.status" (change)="onEditStatusChange()">
+                <option value="Deployed">Deployed</option>
+                <option value="Staging">Staging</option>
+                <option value="Pending Deployment">Pending Deployment</option>
+                <option value="Receiving">Receiving</option>
+                <option value="Storage">Storage</option>
+                <option value="Retired / Archived">Retired / Archived</option>
+                <option value="Disposal">Disposal</option>
+              </select>
+            </div>
+
+            <div style="margin-top: 10px;" *ngIf="editFormData.deviceName">
+              <label class="app-label">Generated Device Name</label>
+              <input class="app-input app-mono app-input-readonly" [value]="editFormData.deviceName" readonly />
+            </div>
+          </div>
+
+          <!-- Location & Assignment Form -->
+          <div class="app-card">
+            <h3 class="app-section-header">Edit Location & Department</h3>
+
+            <label class="app-label">Department</label>
+            <select class="app-select" [ngModel]="editSelectedDeptCode" (ngModelChange)="onEditDeptChange($event)">
+              <option value="">-- Select Department --</option>
+              <option *ngFor="let dept of departments" [value]="dept.code">{{ dept.name }} ({{ dept.code }})</option>
+            </select>
+
+            <div style="margin-top: 10px;">
+              <label class="app-label">Assigned Employee</label>
+              <input class="app-input" [(ngModel)]="editFormData.assignedEmployee" (blur)="simulateEditADLookup()" />
+            </div>
+
+            <div style="margin-top: 10px;">
+              <label class="app-label">Jurisdiction</label>
+              <select class="app-select" [(ngModel)]="editFormData.location.jurisdiction" (change)="onEditJurisdictionChange(editFormData.location.jurisdiction)">
+                <option value="">-- Select Jurisdiction --</option>
+                <option *ngFor="let j of jurisdictions" [value]="j">{{ j }}</option>
+              </select>
+            </div>
+
+            <div style="margin-top: 10px;">
+              <label class="app-label">Building</label>
+              <select class="app-select" [(ngModel)]="editFormData.location.building">
+                <option value="">-- Select Building --</option>
+                <option *ngFor="let b of editAvailableBuildings" [value]="b">{{ b }}</option>
+              </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+              <div>
+                <label class="app-label">Floor</label>
+                <input class="app-input" [(ngModel)]="editFormData.location.floor" />
+              </div>
+              <div>
+                <label class="app-label">Room / Closet</label>
+                <input class="app-input" [(ngModel)]="editFormData.location.roomOrCloset" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Note Form -->
+          <div class="app-card">
+            <h3 class="app-section-header">Add Log Entry / Note</h3>
+            <textarea class="app-textarea" rows="3" [(ngModel)]="editNoteText" placeholder="Enter reason for changes or audit update..."></textarea>
+          </div>
+
+        </ng-container>
+
+      </ion-content>
+    </ng-template>
+  </ion-modal>

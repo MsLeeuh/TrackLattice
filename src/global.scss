@@ -1,0 +1,173 @@
+/* ==========================================================================
+   Ionic Core Setup & System Palette
+   ========================================================================== */
+@import "@ionic/angular/css/core.css";
+@import "@ionic/angular/css/normalize.css";
+@import "@ionic/angular/css/structure.css";
+@import "@ionic/angular/css/typography.css";
+@import "@ionic/angular/css/display.css";
+
+@import "@ionic/angular/css/padding.css";
+@import "@ionic/angular/css/float-elements.css";
+@import "@ionic/angular/css/text-alignment.css";
+@import "@ionic/angular/css/text-transformation.css";
+@import "@ionic/angular/css/flex-utils.css";
+
+/* Ionic system palette handles standard components based on device settings */
+@import "@ionic/angular/css/palettes/dark.system.css";
+
+/* ==========================================================================
+   Master Theme Variables (Adaptive Light / Dark)
+   ========================================================================== */
+
+/* 1. Default Light Mode Palette */
+:root {
+  --app-bg: #f4f5f8;
+  --app-card-bg: #ffffff;
+  --app-card-border: #e0e0e0;
+  --app-input-bg: #f9f9f9;
+  --app-input-border: #cccccc;
+  --app-text-primary: #111111;
+  --app-text-secondary: #666666;
+  --app-accent-blue: #3880ff;
+  --app-accent-blue-label: #0054e0;
+  --app-readonly-bg: #eef4ff;
+  --app-readonly-border: #3880ff;
+  --app-success: #2dd36f;
+  --app-danger: #eb445a;
+}
+
+/* 2. System Dark Mode Overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #121212;
+    --app-card-bg: #1e1e1e;
+    --app-card-border: #333333;
+    --app-input-bg: #1a1a1a;
+    --app-input-border: #444444;
+    --app-text-primary: #ffffff;
+    --app-text-secondary: #aaaaaa;
+    --app-accent-blue: #3880ff;
+    --app-accent-blue-label: #9ac2ff;
+    --app-readonly-bg: #101c2e;
+    --app-readonly-border: #3880ff;
+  }
+}
+
+/* ==========================================================================
+   Global Responsive Classes (Adaptive)
+   ========================================================================== */
+
+.app-card {
+  background: var(--app-card-bg);
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+  color: var(--app-text-primary);
+}
+
+.app-section-header {
+  color: var(--app-accent-blue);
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.app-label {
+  display: block;
+  color: var(--app-accent-blue-label);
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.app-input,
+.app-select,
+.app-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--app-input-bg);
+  border: 1px solid var(--app-input-border);
+  color: var(--app-text-primary);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--app-accent-blue);
+  }
+}
+
+.app-mono {
+  font-family: monospace;
+}
+
+.app-input-readonly {
+  background: var(--app-readonly-bg);
+  border: 1px solid var(--app-readonly-border);
+  color: var(--app-accent-blue-label);
+  font-weight: bold;
+}
+
+/* Toolbar & Searchbar Global Alignment */
+ion-toolbar {
+  ion-searchbar {
+    padding-inline-start: 4px;
+  }
+}
+
+/* ==========================================================================
+   Adaptive Ionic Alerts
+   ========================================================================== */
+ion-alert {
+  --background: var(--app-card-bg);
+  --color: var(--app-text-primary);
+
+  .alert-wrapper {
+    background: var(--app-card-bg) !important;
+    color: var(--app-text-primary) !important;
+  }
+
+  .alert-button {
+    color: var(--app-accent-blue) !important;
+  }
+}
+
+/* ==========================================================================
+   Modal Display & Viewport Layout
+   ========================================================================== */
+ion-modal {
+  --background: var(--app-bg);
+  --color: var(--app-text-primary);
+}
+
+ion-modal ion-content {
+  --background: var(--app-bg);
+  --color: var(--app-text-primary);
+}
+
+/* Force standalone tab pages to fill 100% of the active tab view */
+app-tab1,
+app-tab2,
+app-tab3 {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  contain: size layout style !important;
+}
+
+app-tab1 ion-content,
+app-tab2 ion-content,
+app-tab3 ion-content {
+  flex: 1 1 100% !important;
+  height: 100% !important;
+  width: 100% !important;
+  display: block !important;
+}

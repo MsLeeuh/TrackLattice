@@ -1,0 +1,388 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>Equipment Intake</ion-title>
+  </ion-toolbar>
+
+  <!-- 3-Way Mode Switcher -->
+  <ion-toolbar>
+    <ion-segment [value]="intakeMode" (ionChange)="intakeMode = $event.detail.value || 'single'" color="primary">
+      <ion-segment-button value="single">
+        <ion-label>Single Item</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="batch">
+        <ion-label>Batch PO</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="dept-batch">
+        <ion-label>Dept Legacy Batch</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+
+<ion-content [fullscreen]="true" class="ion-padding" style="--padding-bottom: 100px;">
+
+  <!-- =========================================================================
+       MODE 1: SINGLE EQUIPMENT INTAKE
+       ========================================================================= -->
+  <ng-container *ngIf="intakeMode === 'single'">
+    
+    <!-- Primary Identity Card -->
+    <div class="app-card">
+      <h3 class="app-section-header">Device Identification</h3>
+
+      <div style="display: flex; gap: 8px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <label class="app-label">Property Tag Number *</label>
+          <input class="app-input app-mono" [(ngModel)]="singleForm.propTag" (ngModelChange)="updateDeviceName()" placeholder="e.g. 10452" />
+        </div>
+        <ion-button color="primary" (click)="scanSingleBarcode('propTag')" style="height: 42px; margin: 0;">
+          <ion-icon name="barcode-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: flex-end; margin-top: 10px;">
+        <div style="flex: 1;">
+          <label class="app-label">Serial Number *</label>
+          <input class="app-input app-mono" [(ngModel)]="singleForm.serialNumber" placeholder="e.g. 5CG12345XYZ" />
+        </div>
+        <ion-button color="primary" (click)="scanSingleBarcode('serialNumber')" style="height: 42px; margin: 0;">
+          <ion-icon name="barcode-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Equipment Category *</label>
+          <select class="app-select" [(ngModel)]="singleForm.equipmentType" (change)="onEquipmentTypeChange()">
+            <option value="">-- Select Category --</option>
+            <option *ngFor="let type of equipmentTypes" [value]="type">{{ type }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Initial Status</label>
+          <select class="app-select" [(ngModel)]="singleForm.status" (change)="onStatusChange()">
+            <option value="Receiving">Receiving</option>
+            <option value="Staging">Staging</option>
+            <option value="Storage">Storage</option>
+            <option value="Pending Deployment">Pending Deployment</option>
+            <option value="Deployed">Deployed</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Manufacturer / Make *</label>
+          <input class="app-input" [(ngModel)]="singleForm.make" placeholder="e.g. HP, Dell, Cisco" />
+        </div>
+        <div>
+          <label class="app-label">Model Name / Number *</label>
+          <input class="app-input" [(ngModel)]="singleForm.model" placeholder="e.g. EliteBook 840 G8" />
+        </div>
+      </div>
+
+      <!-- Auto-Generated Naming Output (Laptops/Workstations) -->
+      <div style="margin-top: 10px;" *ngIf="singleForm.equipmentType === 'Laptop' || singleForm.equipmentType === 'Workstation'">
+        <label class="app-label">Generated Hostname / Device Name</label>
+        <input class="app-input app-mono app-input-readonly" [value]="singleForm.deviceName" readonly />
+      </div>
+    </div>
+
+    <!-- Dynamic Category Attributes (Rendered based on selected Equipment Type) -->
+    <div class="app-card" *ngIf="dynamicAttributes.length > 0">
+      <h3 class="app-section-header">{{ singleForm.equipmentType }} Specifications</h3>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div *ngFor="let attr of dynamicAttributes" [style.grid-column]="attr.type === 'textarea' ? '1 / -1' : 'auto'">
+          <label class="app-label">{{ attr.label }} <span *ngIf="attr.required">*</span></label>
+
+          <!-- Text Input -->
+          <input *ngIf="attr.type === 'text'" class="app-input" [(ngModel)]="singleForm.dynamicData[attr.key]" [placeholder]="attr.placeholder || ''" />
+
+          <!-- Number Input -->
+          <input *ngIf="attr.type === 'number'" type="number" class="app-input" [(ngModel)]="singleForm.dynamicData[attr.key]" [placeholder]="attr.placeholder || ''" />
+
+          <!-- Select Dropdown -->
+          <select *ngIf="attr.type === 'select'" class="app-select" [(ngModel)]="singleForm.dynamicData[attr.key]">
+            <option value="">-- Select --</option>
+            <option *ngFor="let opt of attr.options" [value]="opt">{{ opt }}</option>
+          </select>
+
+          <!-- Checkbox / Toggle -->
+          <div *ngIf="attr.type === 'boolean'" style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+            <input type="checkbox" [(ngModel)]="singleForm.dynamicData[attr.key]" style="width: 18px; height: 18px;" />
+            <span style="font-size: 14px;">{{ attr.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location & Assignment Card -->
+    <div class="app-card">
+      <h3 class="app-section-header">Location & Assignment</h3>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label class="app-label">Department</label>
+          <select class="app-select" [ngModel]="selectedDeptCode" (ngModelChange)="onDeptChange($event)">
+            <option value="">-- Select Department --</option>
+            <option *ngFor="let dept of departments" [value]="dept.code">{{ dept.name }} ({{ dept.code }})</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Assigned Employee</label>
+          <input class="app-input" [(ngModel)]="singleForm.assignedEmployee" (blur)="simulateADLookup()" placeholder="e.g. John Smith" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Jurisdiction</label>
+          <select class="app-select" [(ngModel)]="singleForm.location.jurisdiction" (change)="onJurisdictionChange(singleForm.location.jurisdiction)">
+            <option value="">-- Select Jurisdiction --</option>
+            <option *ngFor="let j of jurisdictions" [value]="j">{{ j }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Building</label>
+          <select class="app-select" [(ngModel)]="singleForm.location.building">
+            <option value="">-- Select Building --</option>
+            <option *ngFor="let b of availableBuildings" [value]="b">{{ b }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Floor</label>
+          <input class="app-input" [(ngModel)]="singleForm.location.floor" placeholder="e.g. 2nd Floor" />
+        </div>
+        <div>
+          <label class="app-label">Room / Closet</label>
+          <input class="app-input" [(ngModel)]="singleForm.location.roomOrCloset" placeholder="e.g. Room 204" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Configuration Card (Optional for Network Equipment) -->
+    <div class="app-card" *ngIf="singleForm.equipmentType === 'Switch' || singleForm.equipmentType === 'Access Point' || singleForm.equipmentType === 'Router'">
+      <h3 class="app-section-header">Network Specifications</h3>
+
+      <label class="app-label">MAC Address</label>
+      <input class="app-input app-mono" [(ngModel)]="singleForm.macAddress" placeholder="00:1A:2B:3C:4D:5E" />
+
+      <div style="margin-top: 10px;">
+        <label class="app-label">Management IP Address</label>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <input class="app-input app-mono" style="text-align: center;" [(ngModel)]="ipOctets.oct1" maxlength="3" #oct1 (keyup)="autoAdvanceOctet($event, oct2)" /> .
+          <input class="app-input app-mono" style="text-align: center;" [(ngModel)]="ipOctets.oct2" maxlength="3" #oct2 (keyup)="autoAdvanceOctet($event, oct3)" /> .
+          <input class="app-input app-mono" style="text-align: center;" [(ngModel)]="ipOctets.oct3" maxlength="3" #oct3 (keyup)="autoAdvanceOctet($event, oct4)" /> .
+          <input class="app-input app-mono" style="text-align: center;" [(ngModel)]="ipOctets.oct4" maxlength="3" #oct4 />
+        </div>
+      </div>
+    </div>
+
+    <ion-button expand="block" color="success" (click)="saveSingleAsset()" style="margin-top: 16px;">
+      <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+      Save Asset to Inventory
+    </ion-button>
+  </ng-container>
+
+
+  <!-- =========================================================================
+       MODE 2: BATCH PURCHASE ORDER (PO) INTAKE
+       ========================================================================= -->
+  <ng-container *ngIf="intakeMode === 'batch'">
+    
+    <!-- Batch PO Header Controls -->
+    <div class="app-card">
+      <h3 class="app-section-header">Purchase Order Details</h3>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label class="app-label">Purchase Order Number *</label>
+          <input class="app-input app-mono" [(ngModel)]="poBatch.poNumber" placeholder="PO-2026-8841" />
+        </div>
+        <div>
+          <label class="app-label">Vendor Name</label>
+          <input class="app-input" [(ngModel)]="poBatch.vendor" placeholder="e.g. CDW-G, Dell" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Default Equipment Category</label>
+          <select class="app-select" [(ngModel)]="poBatch.defaultCategory">
+            <option value="">-- Select Category --</option>
+            <option *ngFor="let type of equipmentTypes" [value]="type">{{ type }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Total Expected Items</label>
+          <input type="number" class="app-input" [(ngModel)]="poBatch.expectedCount" placeholder="e.g. 25" />
+        </div>
+      </div>
+
+      <ion-button expand="block" fill="outline" color="primary" (click)="scanShippingTag()" style="margin-top: 12px;">
+        <ion-icon name="barcode-outline" slot="start"></ion-icon>
+        Scan Box / Shipping Label Sticker
+      </ion-button>
+    </div>
+
+    <!-- Scanned PO Items List -->
+    <div class="app-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 class="app-section-header" style="margin: 0;">Scanned PO Items ({{ poBatch.items?.length || 0 }})</h3>
+        <ion-button size="small" color="primary" (click)="addPoRow()">+ Add Manual Row</ion-button>
+      </div>
+
+      <div *ngIf="!poBatch.items || poBatch.items.length === 0" class="ion-text-center ion-padding" style="color: var(--app-text-secondary);">
+        No items scanned into this PO batch yet. Use shipping sticker scanner above or add rows manually.
+      </div>
+
+      <div *ngFor="let item of poBatch.items; let i = index" style="border-bottom: 1px solid var(--app-card-border); padding: 8px 0; display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center;">
+        <div>
+          <label class="app-label">Tag #</label>
+          <input class="app-input app-mono" [(ngModel)]="item.propTag" placeholder="Property Tag" />
+        </div>
+        <div>
+          <label class="app-label">Serial #</label>
+          <input class="app-input app-mono" [(ngModel)]="item.serialNumber" placeholder="Serial Number" />
+        </div>
+        <ion-button color="danger" fill="clear" size="small" (click)="removePoRow(i)">
+          <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+
+    <ion-button expand="block" color="success" (click)="commitPoBatch()" [disabled]="!poBatch.items || poBatch.items.length === 0">
+      <ion-icon name="cube-outline" slot="start"></ion-icon>
+      Commit PO Batch to Inventory
+    </ion-button>
+  </ng-container>
+
+
+  <!-- =========================================================================
+       MODE 3: DEPARTMENT LEGACY BATCH INTAKE (NEW)
+       ========================================================================= -->
+  <ng-container *ngIf="intakeMode === 'dept-batch'">
+
+    <!-- Preset Location & Department Card (Set Once for Entire Batch) -->
+    <div class="app-card">
+      <h3 class="app-section-header">1. Target Location & Department Presets</h3>
+      <p style="font-size: 12px; color: var(--app-text-secondary); margin: -4px 0 10px 0;">
+        Set these defaults once when walking into a department to intake legacy equipment. All scanned tags will inherit these values automatically.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label class="app-label">Department *</label>
+          <select class="app-select" [ngModel]="deptBatchPreset.deptCode" (ngModelChange)="onDeptBatchPresetDeptChange($event)">
+            <option value="">-- Select Department --</option>
+            <option *ngFor="let dept of departments" [value]="dept.code">{{ dept.name }} ({{ dept.code }})</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Default Status</label>
+          <select class="app-select" [(ngModel)]="deptBatchPreset.status">
+            <option value="Deployed">Deployed</option>
+            <option value="Staging">Staging</option>
+            <option value="Storage">Storage</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Jurisdiction *</label>
+          <select class="app-select" [(ngModel)]="deptBatchPreset.jurisdiction" (change)="onDeptBatchJurisdictionChange(deptBatchPreset.jurisdiction)">
+            <option value="">-- Select Jurisdiction --</option>
+            <option *ngFor="let j of jurisdictions" [value]="j">{{ j }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="app-label">Building *</label>
+          <select class="app-select" [(ngModel)]="deptBatchPreset.building">
+            <option value="">-- Select Building --</option>
+            <option *ngFor="let b of deptBatchAvailableBuildings" [value]="b">{{ b }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="app-label">Default Floor</label>
+          <input class="app-input" [(ngModel)]="deptBatchPreset.floor" placeholder="e.g. 1st Floor" />
+        </div>
+        <div>
+          <label class="app-label">Default Room / Closet</label>
+          <input class="app-input" [(ngModel)]="deptBatchPreset.roomOrCloset" placeholder="e.g. Room 102" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Rapid Scanning Barcode Trigger Card -->
+    <div class="app-card">
+      <h3 class="app-section-header">2. Rapid Scan / Intake</h3>
+
+      <div style="display: flex; gap: 8px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <label class="app-label">Scan Property Tag or Product Tag</label>
+          <input class="app-input app-mono" [(ngModel)]="deptBatchQuickTag" (keyup.enter)="addDeptBatchItem()" placeholder="Scan tag barcode and press Enter..." />
+        </div>
+        <ion-button color="primary" (click)="triggerDeptBatchCameraScan()" style="height: 42px; margin: 0;">
+          <ion-icon name="camera-outline" slot="start"></ion-icon>
+          Scan
+        </ion-button>
+        <ion-button color="success" (click)="addDeptBatchItem()" style="height: 42px; margin: 0;">
+          Add
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- Scanned Legacy Batch Queue -->
+    <div class="app-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 class="app-section-header" style="margin: 0;">Scanned Legacy Items ({{ deptBatchItems?.length || 0 }})</h3>
+        <ion-button size="small" fill="outline" color="danger" (click)="clearDeptBatch()" *ngIf="deptBatchItems.length > 0">Clear Batch</ion-button>
+      </div>
+
+      <div *ngIf="deptBatchItems.length === 0" class="ion-text-center ion-padding" style="color: var(--app-text-secondary);">
+        No legacy equipment scanned for this department yet. Scan or enter property tags above to add them to this intake batch.
+      </div>
+
+      <!-- Scanned Item Quick Detail Row -->
+      <div *ngFor="let item of deptBatchItems; let i = index" style="border-bottom: 1px solid var(--app-card-border); padding: 10px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="app-mono" style="font-weight: bold; color: var(--app-accent-blue-label);">Tag #: {{ item.propTag }}</span>
+          <ion-button color="danger" fill="clear" size="small" (click)="removeDeptBatchItem(i)">
+            <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px;">
+          <div>
+            <label class="app-label">Category</label>
+            <select class="app-select" [(ngModel)]="item.equipmentType">
+              <option *ngFor="let type of equipmentTypes" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="app-label">Make</label>
+            <input class="app-input" [(ngModel)]="item.make" placeholder="e.g. HP" />
+          </div>
+          <div>
+            <label class="app-label">Serial #</label>
+            <input class="app-input app-mono" [(ngModel)]="item.serialNumber" placeholder="Serial" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ion-button expand="block" color="success" (click)="commitDeptBatch()" [disabled]="deptBatchItems.length === 0">
+      <ion-icon name="checkmark-done-circle-outline" slot="start"></ion-icon>
+      Commit Department Legacy Batch ({{ deptBatchItems.length }} Assets)
+    </ion-button>
+
+  </ng-container>
+
+</ion-content>
